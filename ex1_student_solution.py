@@ -66,30 +66,16 @@ class Solution:
         Returns:
             The forward homography of the source image to its destination.
         """
-        h_dst, w_dst = dst_image_shape[:2]
-        h_src, w_src = src_image.shape[:2]
-
-        border_src = np.array([[0, 0, 1], [0, h_src, 1], [w_src, h_src, 1], [w_src, 0, 1]])
-        border_src_in_dst = homography.dot(border_src.T)
-        border_src_in_dst = border_src_in_dst[:2] / border_src_in_dst[-1, :]
-        border_dst = np.array([[0, 0], [0, h_dst], [w_dst, h_dst], [w_dst, 0]])
-        all_borders = np.vstack((border_dst, border_src_in_dst.T))
-        min_cords = np.around(all_borders.min(axis=0)).astype(int)
-        max_cors = np.flip(np.array(dst_image_shape[:2])) - 1
-
         new_image = np.zeros(dst_image_shape)
         for v in range(h_src):
             for u in range(w_src):
                 x = np.array([u, v, 1])
                 x_tag = homography.dot(x)
                 x_tag = (x_tag / x_tag[2])
-                dst_crds = np.around(x_tag[:2] - min_cords).astype(int)
+                u_dst = np.clip(x_tag[0], 0, dst_image_shape[1] - 1).astype(int)
+                v_dst = np.clip(x_tag[1], 0, dst_image_shape[0] - 1).astype(int)
 
-                # Make sure not crossing boundaries
-                dst_crds = np.minimum(dst_crds, max_cors)
-                dst_crds = np.maximum(dst_crds, np.array([0, 0]))
-
-                new_image[dst_crds[1], dst_crds[0], :] = src_image[v, u, :] / 255
+                new_image[v_dst, u_dst, :] = src_image[v, u, :] / 255
 
         return new_image
 
