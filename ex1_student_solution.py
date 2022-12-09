@@ -115,13 +115,13 @@ class Solution:
         dst_grid = dst_grid.astype('int')
         dst_grid[0, :] = dst_grid[0, :].clip(min=0, max=dst_image_shape[1] - 1)
         dst_grid[1, :] = dst_grid[1, :].clip(min=0, max=dst_image_shape[0] - 1)
-        dst_grid = dst_grid.reshape((3, h_src, w_src))
+        dst_grid_r = dst_grid.reshape((3, h_src, w_src))
 
         src_grid = src_grid.reshape((3, h_src, w_src)).astype('int')
         dst_image = np.zeros(dst_image_shape)
-        dst_image[dst_grid[1], dst_grid[0]] = src_image[src_grid[1], src_grid[0]]
+        dst_image[dst_grid_r[1], dst_grid_r[0]] = src_image[src_grid[1], src_grid[0]]
 
-        return dst_image
+        return dst_image.astype('int')
 
     @staticmethod
     def test_homography(homography: np.ndarray,
