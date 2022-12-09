@@ -78,8 +78,8 @@ class Solution:
         max_cors = np.flip(np.array(dst_image_shape[:2])) - 1
 
         new_image = np.zeros(dst_image_shape)
-        for v in range(src_image.shape[0]):
-            for u in range(src_image.shape[1]):
+        for v in range(h_src):
+            for u in range(w_src):
                 x = np.array([u, v, 1])
                 x_tag = homography.dot(x)
                 x_tag = (x_tag / x_tag[2])
@@ -120,9 +120,22 @@ class Solution:
         Returns:
             The forward homography of the source image to its destination.
         """
-        # return new_image
-        """INSERT YOUR CODE HERE"""
-        pass
+        h_src, w_src = src_image.shape[:2]
+        xv, yv = np.meshgrid(range(w_src), range(h_src), sparse=False, indexing='xy')
+        src_grid = np.vstack([xv.flatten(), yv.flatten(), np.ones(h_src * w_src)])
+
+        dst_grid = np.dot(homography, src_grid)
+        dst_grid = dst_grid / dst_grid[2, :]
+        dst_grid = dst_grid.astype('int')
+        dst_grid[0, :] = dst_grid[0, :].clip(min=0, max=dst_image_shape[1] - 1)
+        dst_grid[1, :] = dst_grid[1, :].clip(min=0, max=dst_image_shape[0] - 1)
+        dst_grid = dst_grid.reshape((3, h_src, w_src))
+
+        src_grid = src_grid.reshape((3, h_src, w_src)).astype('int')
+        dst_image = np.zeros(dst_image_shape)
+        dst_image[dst_grid[1], dst_grid[0]] = src_image[src_grid[1], src_grid[0]]
+
+        return dst_image
 
     @staticmethod
     def test_homography(homography: np.ndarray,
