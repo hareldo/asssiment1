@@ -67,6 +67,7 @@ class Solution:
             The forward homography of the source image to its destination.
         """
         new_image = np.zeros(dst_image_shape)
+        h_src, w_src = src_image.shape[:2]
         for v in range(h_src):
             for u in range(w_src):
                 x = np.array([u, v, 1])
