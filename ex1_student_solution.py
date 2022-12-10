@@ -72,9 +72,12 @@ class Solution:
             for u in range(w_src):
                 x = np.array([u, v, 1])
                 x_tag = homography.dot(x)
-                x_tag = (x_tag / x_tag[2])
-                u_dst = np.clip(x_tag[0], 0, dst_image_shape[1] - 1).astype(int)
-                v_dst = np.clip(x_tag[1], 0, dst_image_shape[0] - 1).astype(int)
+                x_tag = (x_tag / x_tag[2]).astype(int)
+
+                u_dst = max(x_tag[0], 0)
+                u_dst = min(u_dst, dst_image_shape[1] - 1)
+                v_dst = max(x_tag[1], 0)
+                v_dst = min(v_dst, dst_image_shape[0] - 1)
 
                 new_image[v_dst, u_dst, :] = src_image[v, u, :] / 255
 
@@ -108,19 +111,18 @@ class Solution:
             The forward homography of the source image to its destination.
         """
         h_src, w_src = src_image.shape[:2]
-        xv, yv = np.meshgrid(range(w_src), range(h_src), sparse=False, indexing='xy')
-        src_grid = np.vstack([xv.flatten(), yv.flatten(), np.ones(h_src * w_src)])
+        xx, yy = np.meshgrid(range(w_src), range(h_src), sparse=False, indexing='xy')
+        src_grid = np.vstack([xx.flatten(), yy.flatten(), np.ones(h_src * w_src)])
 
-        dst_grid = np.dot(homography, src_grid)
-        dst_grid = dst_grid / dst_grid[2, :]
-        dst_grid = dst_grid.astype('int')
-        dst_grid[0, :] = dst_grid[0, :].clip(min=0, max=dst_image_shape[1] - 1)
-        dst_grid[1, :] = dst_grid[1, :].clip(min=0, max=dst_image_shape[0] - 1)
-        dst_grid_r = dst_grid.reshape((3, h_src, w_src))
+        src_to_dst_grid = np.dot(homography, src_grid)
+        src_to_dst_grid = (src_to_dst_grid / src_to_dst_grid[2, :]).astype('int')
+        src_to_dst_grid[0, :] = src_to_dst_grid[0, :].clip(min=0, max=dst_image_shape[1] - 1)
+        src_to_dst_grid[1, :] = src_to_dst_grid[1, :].clip(min=0, max=dst_image_shape[0] - 1)
+        src_to_dst_grid = src_to_dst_grid.reshape((3, h_src, w_src))
 
         src_grid = src_grid.reshape((3, h_src, w_src)).astype('int')
         dst_image = np.zeros(dst_image_shape)
-        dst_image[dst_grid_r[1], dst_grid_r[0]] = src_image[src_grid[1], src_grid[0]]
+        dst_image[src_to_dst_grid[1], src_to_dst_grid[0]] = src_image[src_grid[1], src_grid[0]]
 
         return dst_image.astype('int')
 
@@ -241,10 +243,24 @@ class Solution:
         Returns:
             The source image backward warped to the destination coordinates.
         """
+        h_dst, w_dst = dst_image_shape[:2]
+        xx_d, yy_d = np.meshgrid(range(w_dst), range(h_dst), sparse=False, indexing='xy')
+        dst_grid = np.vstack([xx_d.flatten(), yy_d.flatten(), np.ones(h_dst * w_dst)])
 
-        # return backward_warp
-        """INSERT YOUR CODE HERE"""
-        pass
+        dst_to_src_grid = np.dot(backward_projective_homography, dst_grid)
+        dst_to_src_grid = (dst_to_src_grid / dst_to_src_grid[2, :]).astype('int')
+        dst_to_src_grid[0, :] = dst_to_src_grid[0, :].clip(min=0, max=w_dst - 1)
+        dst_to_src_grid[1, :] = dst_to_src_grid[1, :].clip(min=0, max=h_dst - 1)
+        dst_to_src_grid = dst_to_src_grid.reshape((3, h_dst, w_dst))
+        yy_d = dst_to_src_grid[1]
+        xx_d = dst_to_src_grid[0]
+
+        h_src, w_src = src_image.shape[:2]
+        xx_s, yy_s = np.meshgrid(range(w_src), range(h_src), sparse=False, indexing='xy')
+        xx_s = xx_s.flatten()
+        yy_s = yy_s.flatten()
+        backward_warped = griddata((yy_s, xx_s), src_image[yy_s, xx_s], (yy_d, xx_d), method='cubic')
+        return backward_warped
 
     @staticmethod
     def find_panorama_shape(src_image: np.ndarray,
