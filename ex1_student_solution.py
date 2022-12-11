@@ -350,9 +350,10 @@ class Solution:
             A new homography which includes the backward homography and the
             translation.
         """
-        # return final_homography
-        """INSERT YOUR CODE HERE"""
-        pass
+        translation_mat = np.array([[1, 0, -pad_left], [0, 1, -pad_up], [0, 0, 1]])
+        final_homography = np.dot(backward_homography, translation_mat)
+        final_homography /= np.linalg.norm(final_homography)
+        return final_homography
 
     def panorama(self,
                  src_image: np.ndarray,
@@ -393,6 +394,19 @@ class Solution:
             A panorama image.
 
         """
-        # return np.clip(img_panorama, 0, 255).astype(np.uint8)
-        """INSERT YOUR CODE HERE"""
-        pass
+        forward_homography = self.compute_homography(match_p_src, match_p_dst, inliers_percent, max_err)
+        backward_homography = self.compute_homography(match_p_dst, match_p_src, inliers_percent, max_err)
+        rows, cols, pad_struct = Solution.find_panorama_shape(src_image, dst_image, forward_homography)
+        backward_homography = Solution.add_translation_to_backward_homography(backward_homography,
+                                                                             pad_struct.pad_left,
+                                                                             pad_struct.pad_up)
+
+        panorama = np.zeros(shape=(rows, cols, 3), dtype=np.uint8)
+        panorama[pad_struct.pad_up: pad_struct.pad_up + dst_image.shape[0],
+                 pad_struct.pad_left: pad_struct.pad_left + dst_image.shape[1]] = dst_image
+
+        backward_warped = Solution.compute_backward_mapping(backward_homography, src_image, panorama.shape)
+        mask = panorama[: backward_warped.shape[0], :backward_warped.shape[1]] == [0, 0, 0]
+        panorama[mask] = backward_warped[mask]
+        return panorama
+
