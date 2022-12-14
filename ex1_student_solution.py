@@ -335,11 +335,8 @@ class Solution:
 
         dst_to_src_grid = np.dot(backward_projective_homography, dst_grid)
         dst_to_src_grid = (dst_to_src_grid / dst_to_src_grid[2, :]).astype('int')
-        dst_to_src_grid[0, :] = dst_to_src_grid[0, :].clip(min=0, max=w_dst - 1)
-        dst_to_src_grid[1, :] = dst_to_src_grid[1, :].clip(min=0, max=h_dst - 1)
         dst_to_src_grid = dst_to_src_grid.reshape((3, h_dst, w_dst))
-        yy_d = dst_to_src_grid[1]
-        xx_d = dst_to_src_grid[0]
+        yy_d, xx_d = dst_to_src_grid[1], dst_to_src_grid[0]
 
         h_src, w_src = src_image.shape[:2]
         xx_s, yy_s = np.meshgrid(range(w_src), range(h_src), sparse=False, indexing='xy')
@@ -489,7 +486,7 @@ class Solution:
 
         panorama = np.zeros(shape=(rows, cols, 3), dtype=np.uint8)
         panorama[pad_struct.pad_up: pad_struct.pad_up + dst_image.shape[0],
-        pad_struct.pad_left: pad_struct.pad_left + dst_image.shape[1]] = dst_image
+                 pad_struct.pad_left: pad_struct.pad_left + dst_image.shape[1]] = dst_image
 
         backward_warped = Solution.compute_backward_mapping(backward_homography, src_image, panorama.shape)
         mask = panorama[: backward_warped.shape[0], :backward_warped.shape[1]] == [0, 0, 0]
