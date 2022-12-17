@@ -5,8 +5,10 @@ from typing import Tuple
 from random import sample
 from collections import namedtuple
 
+
 from numpy.linalg import svd
 from scipy.interpolate import griddata
+
 
 PadStruct = namedtuple('PadStruct',
                        ['pad_up', 'pad_down', 'pad_right', 'pad_left'])
@@ -14,7 +16,6 @@ PadStruct = namedtuple('PadStruct',
 
 class Solution:
     """Implement Projective Homography and Panorama Solution."""
-
     def __init__(self):
         pass
 
@@ -246,7 +247,7 @@ class Solution:
         """
         # use class notations:
         w = inliers_percent
-        # t = max_err
+        t = max_err
         # p = parameter determining the probability of the algorithm to
         # succeed
         p = 0.99
@@ -258,17 +259,12 @@ class Solution:
         k = int(np.ceil(np.log(1 - p) / np.log(1 - w ** n))) + 1
 
         # variables declaration
-        min_dist_mse = 10 ** 9
+        min_dist_mse = 10**9
         homography = 0
         one_model_found = 0
-        pts_shape = match_p_src.shape[1]
 
         for i in range(k):
-            # Array for random sampling
-            sample_arr = [True, False]
-
-            # Create a numpy array with random True or False of size 10
-            bool_arr = np.random.choice(sample_arr, size=pts_shape)
+            bool_arr = np.random.permutation(range(match_p_src.shape[1]))[:n]
 
             # current random choosen points
             curr_match_p_src = match_p_src[:, bool_arr]
@@ -276,21 +272,21 @@ class Solution:
 
             # compute and test homography
             curr_homography = self.compute_homography_naive(curr_match_p_src, curr_match_p_dst)
-            fit_percent, dist_mse = self.test_homography(curr_homography, curr_match_p_src[:, :],
-                                                         curr_match_p_dst[:, :], max_err)
+            fit_percent, dist_mse = self.test_homography(curr_homography, match_p_src,
+                                                         match_p_dst, t)
 
             if fit_percent > d:
                 # get all inliers according to current homography
-                mp_src_meets_model, mp_dst_meets_model = self.meet_the_model_points(curr_homography, match_p_src[:, :],
-                                                                                    match_p_dst[:, :], max_err)
+                mp_src_meets_model, mp_dst_meets_model = self.meet_the_model_points(curr_homography, match_p_src,
+                                                                                    match_p_dst, t)
 
                 # recompute the model using all inliers
                 valid_curr_homography = self.compute_homography_naive(mp_src_meets_model, mp_dst_meets_model)
 
                 # test the current homography with all the founded inliers
-                fit_percent_all, dist_mse_all = self.test_homography(valid_curr_homography, mp_src_meets_model[:, :],
-                                                                     mp_dst_meets_model[:, :],
-                                                                     max_err)
+                fit_percent_all, dist_mse_all = self.test_homography(valid_curr_homography, match_p_src,
+                                                                     match_p_dst,
+                                                                     t)
 
                 # save the best model homography
                 if dist_mse_all < min_dist_mse:
@@ -299,8 +295,16 @@ class Solution:
                     one_model_found = 1
 
         if one_model_found == 0:
-            print('RANSAC algorithm didnt find any sufficient model with those parameters \n exit...')
-            exit()
+            print('RANSAC algorithm didnt find any sufficient model with those parameters')
+            user_restart = str(input("Would you like to rerun RANSAC ? [y/n] "))
+            if user_restart == "y":
+                self.compute_homography(match_p_src,
+                                   match_p_dst,
+                                   inliers_percent,
+                                   max_err)
+            else:
+                print("user doesnt want. exit...")
+                exit()
 
         return homography
 
